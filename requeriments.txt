@@ -1,5 +1,0 @@
-pandas
-openpyxl
-pymupdf
-streamlit
-fpdf

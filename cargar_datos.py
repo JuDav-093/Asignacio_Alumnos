@@ -1,63 +1,63 @@
 import pandas as pd
 import sqlite3
 
-def limpiar_columnas(df):
-    # Convierte encabezados a mayúsculas y quita espacios en blanco
-    df.columns = [str(c).strip().upper() for c in df.columns]
-    return df
+DB = "especialidades_fae.db"
 
-def cargar_todo():
-    conn = sqlite3.connect('especialidades_fae.db')
-    
+def cargar_desde_excel(file_ant, file_bat, file_afin):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
     try:
-        # 1. CARGAR ANTIGÜEDADES
-        # Si el Excel tiene celdas vacías arriba, pandas podría no detectar los nombres.
-        # Intentamos leerlo directamente.
-        df_ant = pd.read_excel('antiguedades_alumnos.xlsx')
-        df_ant = limpiar_columnas(df_ant)
-        
-        for _, row in df_ant.iterrows():
-            # Usamos get() para evitar que el programa se cierre si no encuentra la columna exacta
-            ant = row.get('ANTIGUEDAD') or row.get('ORD') or row.get('ORDEN')
-            nombre = row.get('NOMBRES') or row.get('NOMBRE Y APELLIDO')
-            
-            if pd.notna(ant):
-                conn.execute("INSERT INTO alumnos (antiguedad, nombres) VALUES (?, ?)", 
-                             (int(ant), str(nombre)))
-        print("✔ Antigüedades cargadas correctamente.")
+        cursor.execute("DELETE FROM alumnos")
+        cursor.execute("DELETE FROM bat7")
+        cursor.execute("DELETE FROM preferencias")
 
-        # 2. CARGAR BAT-7 (Ajustado a la estructura de tus archivos)
-        # Skiprows=3 porque en tus archivos la data real empieza en la fila 4 
-        df_bat = pd.read_excel('BAT_7.xlsx', skiprows=3)
-        df_bat = limpiar_columnas(df_bat)
-        
-        for _, row in df_bat.iterrows():
-            ant = row.get('ORD')
-            if pd.notna(ant):
-                conn.execute("INSERT INTO bat7 VALUES (?, ?, ?, ?)", 
-                             (int(ant), str(row.get('PRINCIPAL')), 
-                              str(row.get('OPTATIVA 1')), 
-                              str(row.get('SUGERENCIA SEGÚN ESTUDIO'))))
-        print("✔ Datos BAT-7 cargados.")
+        # ===== ANTIGÜEDADES =====
+        df_ant = pd.read_excel(file_ant)
+        df_ant.columns = df_ant.columns.str.strip().str.lower()
 
-        # 3. CARGAR AFINIDAD DEL ALUMNO
-        df_af = pd.read_excel('AFINIDAD_ALUMNO.xlsx', skiprows=3)
-        df_af = limpiar_columnas(df_af)
-        
-        for _, row in df_af.iterrows():
-            ant = row.get('ORD')
-            if pd.notna(ant):
-                conn.execute("INSERT INTO preferencias VALUES (?, ?, ?, ?)", 
-                             (int(ant), str(row.get('PRINCIPAL')), 
-                              str(row.get('OPTATIVA 1')), 
-                              str(row.get('DESCARTE'))))
-        print("✔ Preferencias cargadas.")
+        for _, r in df_ant.iterrows():
+            cursor.execute(
+                "INSERT INTO alumnos VALUES (?, ?)",
+                (int(r["antiguedad"]), r["nombres"].strip())
+            )
+
+        # ===== BAT-7 =====
+        df_bat = pd.read_excel(file_bat, skiprows=1)
+        df_bat.columns = df_bat.columns.str.strip().str.lower()
+
+        for _, r in df_bat.iterrows():
+            cursor.execute(
+                "INSERT INTO bat7 VALUES (?, ?, ?, ?)",
+                (
+                    int(r["antiguedad"]),
+                    r["principal"],
+                    r["optativa 1"],
+                    r["sugerencia"]
+                )
+            )
+
+        # ===== AFINIDAD =====
+        df_af = pd.read_excel(file_afin, skiprows=1)
+        df_af.columns = df_af.columns.str.strip().str.lower()
+
+        for _, r in df_af.iterrows():
+            cursor.execute(
+                "INSERT INTO preferencias VALUES (?, ?, ?, ?)",
+                (
+                    int(r["antiguedad"]),
+                    r["principal"],
+                    r["optativa 1"],
+                    r["descarte"]
+                )
+            )
 
         conn.commit()
+        return True
+
     except Exception as e:
-        print(f"❌ Error durante la carga: {e}")
+        print(e)
+        return False
+
     finally:
         conn.close()
-
-if __name__ == "__main__":
-    cargar_todo()

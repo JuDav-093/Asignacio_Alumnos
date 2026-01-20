@@ -1,43 +1,115 @@
-from fpdf import FPDF
+from reportlab.platypus import (
+    SimpleDocTemplate, Table, TableStyle, Paragraph
+)
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 import sqlite3
-import pandas as pd
+import io
 from datetime import datetime
 
-class ReporteFAE(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'FUERZA AÉREA ECUATORIANA', 0, 1, 'C')
-        self.cell(0, 10, 'JUNTA ACADÉMICA - ASIGNACIÓN DE ESPECIALIDADES', 0, 1, 'C')
-        self.ln(10)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+DB = "especialidades_fae.db"
 
 def generar_pdf_resultados():
-    conn = sqlite3.connect('especialidades_fae.db')
-    df = pd.read_sql_query("SELECT * FROM resultados_finales", conn)
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=40,
+        bottomMargin=40
+    )
+
+    styles = getSampleStyleSheet()
+
+    estilo_titulo = ParagraphStyle(
+        "Titulo",
+        parent=styles["Normal"],
+        alignment=TA_CENTER,
+        fontSize=12,
+        spaceAfter=12,
+        leading=14,
+        fontName="Helvetica-Bold"
+    )
+
+    estilo_tabla = ParagraphStyle(
+        "Tabla",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        alignment=TA_JUSTIFY
+    )
+
+    contenido = []
+
+    # ===== ENCABEZADO =====
+    contenido.append(Paragraph(
+        "FUERZA AÉREA ECUATORIANA<br/>"
+        "ESCUELA DE FORMACIÓN<br/><br/>"
+        "REPORTE OFICIAL DE ASIGNACIÓN DE ESPECIALIDADES",
+        estilo_titulo
+    ))
+
+    fecha = datetime.now().strftime("%d/%m/%Y")
+    contenido.append(Paragraph(f"Fecha de emisión: {fecha}<br/><br/>", styles["Normal"]))
+
+    # ===== DATOS =====
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT antiguedad, nombres, especialidad, motivo
+        FROM resultados_finales
+        ORDER BY antiguedad
+    """)
+    datos = cursor.fetchall()
     conn.close()
 
-    pdf = ReporteFAE()
-    pdf.add_page()
-    pdf.set_font('Arial', '', 10)
+    tabla_data = [
+        [
+            Paragraph("<b>Antig.</b>", estilo_tabla),
+            Paragraph("<b>Nombres</b>", estilo_tabla),
+            Paragraph("<b>Especialidad</b>", estilo_tabla),
+            Paragraph("<b>Motivo de Asignación</b>", estilo_tabla)
+        ]
+    ]
 
-    # Encabezados de tabla
-    pdf.set_fill_color(200, 200, 200)
-    pdf.cell(30, 10, 'Antigüedad', 1, 0, 'C', True)
-    pdf.cell(80, 10, 'Nombres y Apellidos', 1, 0, 'C', True)
-    pdf.cell(80, 10, 'Especialidad Asignada', 1, 1, 'C', True)
+    for a, n, e, m in datos:
+        tabla_data.append([
+            Paragraph(str(a), estilo_tabla),
+            Paragraph(n, estilo_tabla),
+            Paragraph(e, estilo_tabla),
+            Paragraph(m, estilo_tabla)
+        ])
 
-    # Datos
-    for _, row in df.iterrows():
-        pdf.cell(30, 10, str(row['antiguedad']), 1, 0, 'C')
-        pdf.cell(80, 10, str(row['nombres']), 1, 0, 'L')
-        pdf.cell(80, 10, str(row['especialidad_asignada']), 1, 1, 'L')
+    tabla = Table(
+        tabla_data,
+        colWidths=[40, 140, 160, 160]  # 👈 ancho controlado
+    )
 
-    pdf.ln(20)
-    pdf.cell(0, 10, '__________________________', 0, 1, 'C')
-    pdf.cell(0, 10, 'Firma de la Junta Académica', 0, 1, 'C')
-    
-    return pdf.output(dest='S').encode('latin-1')
+    tabla.setStyle(TableStyle([
+        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
+        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+        ("ALIGN", (0,0), (0,-1), "CENTER"),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 4),
+        ("RIGHTPADDING", (0,0), (-1,-1), 4),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+
+    contenido.append(tabla)
+
+    # ===== FIRMAS =====
+    contenido.append(Paragraph("<br/><br/>", styles["Normal"]))
+    contenido.append(Paragraph(
+        "______________________________<br/>"
+        "PRESIDENTE JUNTA ACADÉMICA",
+        styles["Normal"]
+    ))
+
+    doc.build(contenido)
+    buffer.seek(0)
+    return buffer
