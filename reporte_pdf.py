@@ -1,6 +1,4 @@
-from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle, Paragraph
-)
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -13,6 +11,7 @@ DB = "especialidades_fae.db"
 
 def generar_pdf_resultados():
     buffer = io.BytesIO()
+
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -29,7 +28,6 @@ def generar_pdf_resultados():
         parent=styles["Normal"],
         alignment=TA_CENTER,
         fontSize=12,
-        spaceAfter=12,
         leading=14,
         fontName="Helvetica-Bold"
     )
@@ -47,7 +45,7 @@ def generar_pdf_resultados():
     # ===== ENCABEZADO =====
     contenido.append(Paragraph(
         "FUERZA AÉREA ECUATORIANA<br/>"
-        "ESCUELA DE FORMACIÓN<br/><br/>"
+        "JUNTA ACADÉMICA<br/><br/>"
         "REPORTE OFICIAL DE ASIGNACIÓN DE ESPECIALIDADES",
         estilo_titulo
     ))
@@ -60,21 +58,24 @@ def generar_pdf_resultados():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT antiguedad, nombres, especialidad, motivo
+        SELECT 
+            antiguedad,
+            nombres,
+            especialidad_asignada,
+            motivo_asignacion
         FROM resultados_finales
         ORDER BY antiguedad
     """)
+
     datos = cursor.fetchall()
     conn.close()
 
-    tabla_data = [
-        [
-            Paragraph("<b>Antig.</b>", estilo_tabla),
-            Paragraph("<b>Nombres</b>", estilo_tabla),
-            Paragraph("<b>Especialidad</b>", estilo_tabla),
-            Paragraph("<b>Motivo de Asignación</b>", estilo_tabla)
-        ]
-    ]
+    tabla_data = [[
+        Paragraph("<b>Antig.</b>", estilo_tabla),
+        Paragraph("<b>Nombres</b>", estilo_tabla),
+        Paragraph("<b>Especialidad</b>", estilo_tabla),
+        Paragraph("<b>Motivo de Asignación</b>", estilo_tabla)
+    ]]
 
     for a, n, e, m in datos:
         tabla_data.append([
@@ -86,7 +87,7 @@ def generar_pdf_resultados():
 
     tabla = Table(
         tabla_data,
-        colWidths=[40, 140, 160, 160]  # 👈 ancho controlado
+        colWidths=[40, 140, 160, 160]
     )
 
     tabla.setStyle(TableStyle([
