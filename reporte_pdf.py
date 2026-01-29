@@ -11,106 +11,66 @@ DB = "especialidades_fae.db"
 
 def generar_pdf_resultados():
     buffer = io.BytesIO()
-
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=30,
-        leftMargin=30,
-        topMargin=40,
-        bottomMargin=40
-    )
-
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     styles = getSampleStyleSheet()
-
-    estilo_titulo = ParagraphStyle(
-        "Titulo",
-        parent=styles["Normal"],
-        alignment=TA_CENTER,
-        fontSize=12,
-        leading=14,
-        fontName="Helvetica-Bold"
-    )
-
-    estilo_tabla = ParagraphStyle(
-        "Tabla",
-        parent=styles["Normal"],
-        fontSize=8,
-        leading=10,
-        alignment=TA_JUSTIFY
-    )
+    
+    # Estilos de texto
+    estilo_titulo = ParagraphStyle("Titulo", parent=styles["Normal"], alignment=TA_CENTER, fontSize=14, fontName="Helvetica-Bold")
+    estilo_tabla = ParagraphStyle("Tabla", parent=styles["Normal"], fontSize=9)
 
     contenido = []
+    contenido.append(Paragraph("FUERZA AÉREA ECUATORIANA", estilo_titulo))
+    contenido.append(Paragraph("REPORTE OFICIAL DE ASIGNACIÓN<br/><br/>", estilo_titulo))
 
-    # ===== ENCABEZADO =====
-    contenido.append(Paragraph(
-        "FUERZA AÉREA ECUATORIANA<br/>"
-        "JUNTA ACADÉMICA<br/><br/>"
-        "REPORTE OFICIAL DE ASIGNACIÓN DE ESPECIALIDADES",
-        estilo_titulo
-    ))
-
-    fecha = datetime.now().strftime("%d/%m/%Y")
-    contenido.append(Paragraph(f"Fecha de emisión: {fecha}<br/><br/>", styles["Normal"]))
-
-    # ===== DATOS =====
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
-
+    
+    # CONSULTA CORREGIDA: coincide con crear_db.py
     cursor.execute("""
-        SELECT 
-            antiguedad,
-            nombres,
-            especialidad_asignada,
-            motivo_asignacion
-        FROM resultados_finales
-        ORDER BY antiguedad
+        SELECT antiguedad, nombres, especialidad_asignada, motivo_asignacion 
+        FROM resultados_finales 
+        ORDER BY antiguedad ASC
     """)
-
     datos = cursor.fetchall()
     conn.close()
 
-    tabla_data = [[
-        Paragraph("<b>Antig.</b>", estilo_tabla),
-        Paragraph("<b>Nombres</b>", estilo_tabla),
-        Paragraph("<b>Especialidad</b>", estilo_tabla),
-        Paragraph("<b>Motivo de Asignación</b>", estilo_tabla)
-    ]]
+    # Encabezados de tabla
+    tabla_data = [["Antig.", "Nombres", "Especialidad", "Motivo"]]
+    
+    for fila in datos:
+        tabla_data.append([str(fila[0]), fila[1], fila[2], fila[3]])
 
-    for a, n, e, m in datos:
-        tabla_data.append([
-            Paragraph(str(a), estilo_tabla),
-            Paragraph(n, estilo_tabla),
-            Paragraph(e, estilo_tabla),
-            Paragraph(m, estilo_tabla)
-        ])
-
-    tabla = Table(
-        tabla_data,
-        colWidths=[40, 140, 160, 160]
-    )
-
-    tabla.setStyle(TableStyle([
-        ("GRID", (0,0), (-1,-1), 0.5, colors.black),
-        ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-        ("ALIGN", (0,0), (0,-1), "CENTER"),
-        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-        ("LEFTPADDING", (0,0), (-1,-1), 4),
-        ("RIGHTPADDING", (0,0), (-1,-1), 4),
-        ("TOPPADDING", (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    t = Table(tabla_data, colWidths=[50, 150, 150, 150])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
 
-    contenido.append(tabla)
+    contenido.append(t)
+
 
     # ===== FIRMAS =====
+
     contenido.append(Paragraph("<br/><br/>", styles["Normal"]))
+
     contenido.append(Paragraph(
+
         "______________________________<br/>"
+
         "PRESIDENTE JUNTA ACADÉMICA",
+
         styles["Normal"]
+
     ))
 
+
+
     doc.build(contenido)
+
     buffer.seek(0)
+
     return buffer
+

@@ -5,27 +5,11 @@ DB = "especialidades_fae.db"
 
 def obtener_auditoria(antiguedad):
     conn = sqlite3.connect(DB)
-
-    alumno = pd.read_sql(
-        "SELECT * FROM alumnos WHERE antiguedad=?",
-        conn, params=(antiguedad,)
-    )
-
-    bat = pd.read_sql(
-        "SELECT * FROM bat7 WHERE alumno_antiguedad=?",
-        conn, params=(antiguedad,)
-    )
-
-    pref = pd.read_sql(
-        "SELECT * FROM preferencias WHERE alumno_antiguedad=?",
-        conn, params=(antiguedad,)
-    )
-
-    res = pd.read_sql(
-        "SELECT * FROM resultados_finales WHERE antiguedad=?",
-        conn, params=(antiguedad,)
-    )
-
+    # Datos de entrada
+    asp = pd.read_sql("SELECT * FROM aspirantes WHERE antiguedad=?", conn, params=(antiguedad,))
+    # Resultado
+    res = pd.read_sql("SELECT * FROM resultados_finales WHERE antiguedad=?", conn, params=(antiguedad,))
+    # Detalle formateado
+    det = pd.read_sql("SELECT detalle FROM auditoria_decisiones WHERE antiguedad=?", conn, params=(antiguedad,))
     conn.close()
-
-    return alumno, bat, pref, res
+    return asp, res, det
