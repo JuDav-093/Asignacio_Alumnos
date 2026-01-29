@@ -149,42 +149,27 @@ elif paso == "3️⃣ Resultados y Reportes":
 # 4️⃣ ETAPA: AUDITORÍA Y ESTADÍSTICAS
 # =========================================================
 elif paso == "4️⃣ Auditoría y Estadísticas":
-    st.title("📊 Auditoría por Estudiante")
+    st.title("📊 Auditoría y Estadísticas")
     
-    # --- Parte 1: Auditoría Detallada ---
-    antig = st.number_input("Ingrese Antigüedad del Alumno a consultar", min_value=1, step=1)
-    
-    if st.button("🔍 Consultar Motivo"):
-        asp, res, det = obtener_auditoria(antig)
-        
-        if asp.empty:
-            st.error("Alumno no encontrado en los registros.")
-        else:
-            # Layout similar a tu imagen de referencia
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("**Datos y Preferencias:**")
-                st.table(asp)
-            with c2:
-                st.markdown("**Resultado de Asignación:**")
-                st.table(res)
-            
-            # EL RECUADRO AZUL (Detalle del Cálculo)
-            if not det.empty:
-                st.markdown("### Detalle del Cálculo:")
-                st.info(det.iloc[0]['detalle'])
+    # ... (tu código de auditoría individual arriba) ...
 
     st.divider()
     st.subheader("📈 Resumen de Vacantes")
 
-    # Llamada directa a las estadísticas
     df_stats = obtener_estadisticas()
 
-    if df_stats["Alumnos Asignados"].sum() == 0:
-        st.info("Ejecute la asignación en la Etapa 2 para ver el resumen de vacantes.")
+    # Verificamos si el DataFrame está vacío o si la columna existe
+    if df_stats.empty or "Alumnos Asignados" not in df_stats.columns:
+        st.info("⚠️ No hay datos disponibles. Por favor, asegúrese de haber completado la **Etapa 1 (Carga)** y la **Etapa 2 (Asignación)**.")
     else:
-        st.dataframe(
-            df_stats, 
-            use_container_width=True, 
-            hide_index=True
-        )
+        # Verificamos si hay al menos un alumno asignado
+        total_asignados = df_stats["Alumnos Asignados"].sum()
+        
+        if total_asignados == 0:
+            st.warning("Aún no se han realizado asignaciones. Ejecute la Etapa 2.")
+        else:
+            st.dataframe(
+                df_stats, 
+                use_container_width=True, 
+                hide_index=True
+            )
