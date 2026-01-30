@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import os
+import time
 
 # ===== IMPORTACIÓN DE TUS MÓDULOS =====
 from crear_db import inicializar_db
