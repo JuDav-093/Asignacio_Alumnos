@@ -93,17 +93,23 @@ if paso == "1️⃣ Carga de Datos":
 
     if st.button("📥 Procesar y Guardar", type="primary"):
         if file_ant and file_bat and file_afin:
-            with st.spinner("Inicializando base de datos..."):
-                inicializar_db()
-                establecer_cupos()
-                ok = cargar_desde_excel(file_ant, file_bat, file_afin)
-                if ok:
-                    st.success("✈️ Información cargada correctamente.")
-                    st.balloons()
-                else:
-                    st.error("Error al procesar archivos. Verifique el formato.")
+            inicializar_db()
+            establecer_cupos()
+            if cargar_desde_excel(file_ant, file_bat, file_afin):
+                # ANIMACIÓN SERIA DE AVIONES (Desplazamiento vertical simulado)
+                placeholder = st.empty()
+                for i in range(3):
+                    placeholder.markdown(f"### ✈️ Procesando... {'✈️' * (i+1)}")
+                    time.sleep(0.4)
+                placeholder.empty()
+                
+                # Notificación institucional
+                st.success("✈️ Información cargada correctamente.")
+                st.toast("Carga exitosa: ✈️ ✈️ ✈️", icon="✈️")
+            else:
+                st.error("Error al procesar archivos.")
         else:
-            st.warning("Cargue los tres archivos obligatorios.")
+            st.warning("Cargue los archivos obligatorios.")
 
 # =========================================================
 # 2️⃣ ETAPA: EJECUCIÓN
@@ -149,27 +155,37 @@ elif paso == "3️⃣ Resultados y Reportes":
 # 4️⃣ ETAPA: AUDITORÍA Y ESTADÍSTICAS
 # =========================================================
 elif paso == "4️⃣ Auditoría y Estadísticas":
-    st.title("📊 Auditoría y Estadísticas")
+    st.title("📊 Auditoría por Estudiante")
     
-    # ... (tu código de auditoría individual arriba) ...
+    antig = st.number_input("Ingresar Antigüedad del Alumno a consultar", min_value=1, step=1)
+    
+    if st.button("🔍 Consultar Motivo"):
+        asp, res, det = obtener_auditoria(antig)
+        
+        if asp.empty:
+            st.error("Alumno no encontrado.")
+        else:
+            # 1. RESULTADO DE ASIGNACIÓN (Primero)
+            st.markdown("#### ✅ Resultado de Asignación:")
+            st.dataframe(res, use_container_width=True, hide_index=True)
+            
+            # 2. DATOS Y PREFERENCIAS (Segundo)
+            st.markdown("#### 📋 Datos y Preferencias:")
+            st.dataframe(asp, use_container_width=True, hide_index=True)
+            
+            # 3. DETALLE DE CÁLCULO (Tercero - Recuadro azul)
+            if not det.empty:
+                st.markdown("#### 🧠 Detalle del Cálculo:")
+                st.info(det.iloc[0]['detalle'])
 
     st.divider()
+    # Sección de estadísticas (Resumen de Vacantes)
     st.subheader("📈 Resumen de Vacantes")
-
-    df_stats = obtener_estadisticas()
-
-    # Verificamos si el DataFrame está vacío o si la columna existe
-    if df_stats.empty or "Alumnos Asignados" not in df_stats.columns:
-        st.info("⚠️ No hay datos disponibles. Por favor, asegúrese de haber completado la **Etapa 1 (Carga)** y la **Etapa 2 (Asignación)**.")
-    else:
-        # Verificamos si hay al menos un alumno asignado
-        total_asignados = df_stats["Alumnos Asignados"].sum()
-        
-        if total_asignados == 0:
-            st.warning("Aún no se han realizado asignaciones. Ejecute la Etapa 2.")
+    try:
+        df_stats = obtener_estadisticas()
+        if df_stats["Alumnos Asignados"].sum() == 0:
+            st.warning("Ejecute la asignación para ver estadísticas.")
         else:
-            st.dataframe(
-                df_stats, 
-                use_container_width=True, 
-                hide_index=True
-            )
+            st.dataframe(df_stats, use_container_width=True, hide_index=True)
+    except Exception as e:
+        st.error(f"Error en estadísticas: {e}")
